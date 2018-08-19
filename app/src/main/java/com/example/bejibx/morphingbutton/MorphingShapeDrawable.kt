@@ -3,12 +3,15 @@ package com.example.bejibx.morphingbutton
 import android.content.res.ColorStateList
 import android.graphics.*
 import android.graphics.drawable.Drawable
+import android.util.Log
 
 class MorphingShapeDrawable(
     private val colors: ColorStateList = ColorStateList.valueOf(Color.RED),
     cornerRadius: Dimension = Dimension(2f),
     strokeWidth: Dimension = Dimension(2f),
-    initialMorphPercent: Float = 1f
+    initialMorphPercent: Float = 1f,
+    transitionMode: TransitionMode = TransitionMode.CLIP,
+    fillShape: Boolean = true
 ) : Drawable() {
 
     init {
@@ -26,6 +29,7 @@ class MorphingShapeDrawable(
 
     private val cornerRadius = cornerRadius.px
     private val strokePaint = Paint()
+    private val fillPaint = Paint()
     private val outerRect = RectF()
     private val boundsRect = RectF()
     private val outerPath = Path()
@@ -36,7 +40,23 @@ class MorphingShapeDrawable(
     private var currentColor = colors.defaultColor
     private var fillRadius = 0f
 
+    var transitionMode = transitionMode
+        set(value) {
+            field = value
+            invalidateSelf()
+        }
+
     var morphPercent = initialMorphPercent
+        set(value) {
+            Log.d("MorphDraw", "morphPercent = $value")
+            if (field != value) {
+                field = value
+                updateTransitionPath()
+                invalidateSelf()
+            }
+        }
+
+    var fillShape = fillShape
         set(value) {
             if (field != value) {
                 field = value
@@ -51,42 +71,61 @@ class MorphingShapeDrawable(
             this.strokeWidth = strokeWidth.px
             isAntiAlias = true
         }
+        fillPaint.color = currentColor
     }
 
     fun setHotSpotPosition(x: Float, y: Float) {
         hotSpot.set(x, y)
         if (updateInnerPath()) {
+            updateTransitionPath()
             invalidateSelf()
         }
     }
 
     override fun draw(canvas: Canvas?) {
         canvas?.apply {
-            drawFill(canvas)
+            canvas.save()
+            canvas.clipPath(outerPath)
+            if (transitionMode == TransitionMode.FILL) {
+                applyFillTransition(canvas)
+            } else {
+                applyClipTransition(canvas)
+            }
+            if (fillShape) {
+                canvas.drawColor(currentColor)
+            }
+            canvas.restore()
             drawRoundRect(outerRect, cornerRadius, cornerRadius, strokePaint)
         }
     }
 
-    private fun drawFill(canvas: Canvas) {
-        if (morphPercent <= 0) {
+    private fun applyFillTransition(canvas: Canvas) {
+        when (morphPercent) {
+            0f -> return
+            1f -> canvas.drawColor(currentColor)
+            else -> canvas.drawPath(innerPath, fillPaint)
+        }
+    }
+
+    private fun updateTransitionPath() {
+        if (fillRadius == 0f) {
             return
         }
-        canvas.save()
-        canvas.clipPath(outerPath)
-        if (morphPercent < 1) {
-            val radius = mapFromRangeToRange(
-                value = morphPercent,
-                sourceRangeStart = 0f,
-                sourceRangeEnd = 1f,
-                targetRangeStart = fillRadius,
-                targetRangeEnd = 0f
-            )
-            innerPath.reset()
-            innerPath.addCircle(hotSpot.x, hotSpot.y, radius, Path.Direction.CW)
+        val radius = mapFromRangeToRange(
+            value = morphPercent,
+            sourceRangeStart = 0f,
+            sourceRangeEnd = 1f,
+            targetRangeStart = 0f,
+            targetRangeEnd = fillRadius
+        )
+        innerPath.reset()
+        innerPath.addCircle(hotSpot.x, hotSpot.y, radius, Path.Direction.CW)
+    }
+
+    private fun applyClipTransition(canvas: Canvas) {
+        if (morphPercent > 0f) {
             canvas.clipOutPathCompat(innerPath)
         }
-        canvas.drawColor(currentColor)
-        canvas.restore()
     }
 
     override fun onBoundsChange(bounds: Rect?) {
@@ -94,7 +133,14 @@ class MorphingShapeDrawable(
         if (bounds == null) {
             return
         }
-        if (updateOuterPath(bounds) || updateInnerPath()) {
+        var isChanged = updateOuterPath(bounds)
+        isChanged = if (updateInnerPath()) {
+            updateTransitionPath()
+            true
+        } else {
+            isChanged
+        }
+        if (isChanged) {
             invalidateSelf()
         }
     }
@@ -144,6 +190,9 @@ class MorphingShapeDrawable(
         val oldColor = currentColor
         currentColor = colors.getColorForState(state, oldColor)
         strokePaint.color = currentColor
+        fillPaint.color = currentColor
         return currentColor != oldColor
     }
+
+    enum class TransitionMode { FILL, CLIP }
 }

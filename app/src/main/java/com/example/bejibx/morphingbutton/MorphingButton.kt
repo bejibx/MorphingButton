@@ -44,16 +44,27 @@ class MorphingButton(
         morphingDrawable = MorphingShapeDrawable(
             colors = attributes.backgroundColor,
             strokeWidth = Dimension(attributes.strokeWidthPx, DimensionUnit.PX),
-            cornerRadius = Dimension(attributes.cornerRadiusPx, DimensionUnit.PX)
+            cornerRadius = Dimension(attributes.cornerRadiusPx, DimensionUnit.PX),
+            initialMorphPercent = 0f,
+            transitionMode = MorphingShapeDrawable.TransitionMode.CLIP,
+            fillShape = true
         )
         background = morphingDrawable
-        styleFilled = Style(StyleType.FILLED, textColors, text, 1f)
-        styleOutlined = Style(
-            StyleType.OUTLINED,
-            attributes.textColorOutlined,
-            attributes.textOutlined,
-            0f
+        styleFilled = Style(
+            type = StyleType.FILLED,
+            textColor = textColors,
+            text = text,
+            backgroundTransitionMode = MorphingShapeDrawable.TransitionMode.CLIP,
+            isBackgroundFilled = true
         )
+        styleOutlined = Style(
+            type = StyleType.OUTLINED,
+            textColor = attributes.textColorOutlined,
+            text = attributes.textOutlined,
+            backgroundTransitionMode = MorphingShapeDrawable.TransitionMode.FILL,
+            isBackgroundFilled = false
+        )
+        switchToFilled()
     }
 
     private fun readAttributes(attrs: AttributeSet?): Attributes {
@@ -116,7 +127,9 @@ class MorphingButton(
         this.currentStyleType = style.type
         text = style.text
         setTextColor(style.textColor)
-        morphingDrawable.morphPercent = style.backgroundMorph
+        morphingDrawable.transitionMode = style.backgroundTransitionMode
+        morphingDrawable.morphPercent = 0f
+        morphingDrawable.fillShape = style.isBackgroundFilled
     }
 
     private fun animateToFilled() {
@@ -133,12 +146,11 @@ class MorphingButton(
                 return
             }
         }
-        val morphRange = if (style.type == StyleType.FILLED) (0f..1f) else (1f..0f)
         val button = this
         val animation = buildAnimation {
             interpolator = FastOutSlowInInterpolator()
 
-            ofFloat(morphRange) {
+            ofFloat(0f, 1f) {
                 duration = 500
                 addUpdateListener {
                     morphingDrawable.morphPercent = it.animatedValue as Float
@@ -178,6 +190,11 @@ class MorphingButton(
                         currentAnimation = null
                     }
                     textAlphaSpan.isEnabled = false
+                    morphingDrawable.apply {
+                        fillShape = style.isBackgroundFilled
+                        transitionMode = style.backgroundTransitionMode
+                        morphPercent = 0f
+                    }
                 }
             )
         }
@@ -240,7 +257,8 @@ class MorphingButton(
         val type: StyleType,
         val textColor: ColorStateList,
         val text: CharSequence,
-        val backgroundMorph: Float
+        val backgroundTransitionMode: MorphingShapeDrawable.TransitionMode,
+        val isBackgroundFilled: Boolean
     )
 
     private data class Attributes(

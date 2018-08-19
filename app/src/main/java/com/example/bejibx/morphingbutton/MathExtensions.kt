@@ -10,8 +10,12 @@ fun mapFromRangeToRange(
     targetRangeStart: Float,
     targetRangeEnd: Float
 ): Float {
-    require(sourceRangeStart != sourceRangeEnd) { "Source range is empty!" }
-    require(targetRangeStart != targetRangeEnd) { "Target range is empty!" }
+    require(sourceRangeStart != sourceRangeEnd) {
+        "Source range [$sourceRangeStart..$sourceRangeEnd] is empty!"
+    }
+    require(targetRangeStart != targetRangeEnd) {
+        "Target range [$targetRangeStart..$targetRangeEnd] is empty!"
+    }
     require(value in (sourceRangeStart..sourceRangeEnd)) {
         "Value should be inside source range, but actual value is $value while range is" +
                 " [$sourceRangeStart..$sourceRangeEnd]!"
