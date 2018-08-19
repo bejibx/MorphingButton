@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="morphingButtonStyle" format="reference" />
+
+    <declare-styleable name="MorphingButton">
+        <attr name="backgroundColor" format="color" />
+        <attr name="strokeWidth" format="dimension" />
+        <attr name="cornerRadius" format="dimension" />
+        <attr name="textOutlined" format="string" />
+        <attr name="textColorOutlined" format="color" />
+        <attr name="android:textColor" />
+    </declare-styleable>
+</resources>
