@@ -128,7 +128,7 @@ class MorphingButton(
         text = style.text
         setTextColor(style.textColor)
         morphingDrawable.transitionMode = style.backgroundTransitionMode
-        morphingDrawable.morphPercent = 0f
+        morphingDrawable.transitionPercent = 0f
         morphingDrawable.fillShape = style.isBackgroundFilled
     }
 
@@ -153,7 +153,7 @@ class MorphingButton(
             ofFloat(0f, 1f) {
                 duration = 500
                 addUpdateListener {
-                    morphingDrawable.morphPercent = it.animatedValue as Float
+                    morphingDrawable.transitionPercent = it.animatedValue as Float
                 }
             }
 
@@ -193,7 +193,7 @@ class MorphingButton(
                     morphingDrawable.apply {
                         fillShape = style.isBackgroundFilled
                         transitionMode = style.backgroundTransitionMode
-                        morphPercent = 0f
+                        transitionPercent = 0f
                     }
                 }
             )

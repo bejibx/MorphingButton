@@ -3,7 +3,6 @@ package com.example.bejibx.morphingbutton
 import android.content.res.ColorStateList
 import android.graphics.*
 import android.graphics.drawable.Drawable
-import android.util.Log
 
 class MorphingShapeDrawable(
     private val colors: ColorStateList = ColorStateList.valueOf(Color.RED),
@@ -30,7 +29,7 @@ class MorphingShapeDrawable(
     private val cornerRadius = cornerRadius.px
     private val strokePaint = Paint()
     private val fillPaint = Paint()
-    private val outerRect = RectF()
+    private val strokeRect = RectF()
     private val boundsRect = RectF()
     private val outerPath = Path()
     private val outerCornerRadii = FloatArray(8) { this.cornerRadius }
@@ -39,6 +38,7 @@ class MorphingShapeDrawable(
 
     private var currentColor = colors.defaultColor
     private var fillRadius = 0f
+    private var currentRadius = 0f
 
     var transitionMode = transitionMode
         set(value) {
@@ -46,9 +46,8 @@ class MorphingShapeDrawable(
             invalidateSelf()
         }
 
-    var morphPercent = initialMorphPercent
+    var transitionPercent = initialMorphPercent
         set(value) {
-            Log.d("MorphDraw", "morphPercent = $value")
             if (field != value) {
                 field = value
                 updateTransitionPath()
@@ -71,7 +70,10 @@ class MorphingShapeDrawable(
             this.strokeWidth = strokeWidth.px
             isAntiAlias = true
         }
-        fillPaint.color = currentColor
+        fillPaint.apply {
+            color = currentColor
+            isAntiAlias = true
+        }
     }
 
     fun setHotSpotPosition(x: Float, y: Float) {
@@ -84,46 +86,54 @@ class MorphingShapeDrawable(
 
     override fun draw(canvas: Canvas?) {
         canvas?.apply {
-            canvas.save()
-            canvas.clipPath(outerPath)
-            if (transitionMode == TransitionMode.FILL) {
-                applyFillTransition(canvas)
+            if (fillShape && transitionPercent == 0f) {
+                canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, fillPaint)
             } else {
-                applyClipTransition(canvas)
+                canvas.save()
+                canvas.clipPath(outerPath)
+                if (transitionMode == TransitionMode.FILL) {
+                    applyFillTransition(canvas)
+                } else {
+                    applyClipTransition(canvas)
+                }
+                if (fillShape) {
+                    canvas.drawColor(currentColor)
+                }
+                canvas.restore()
+                drawRoundRect(strokeRect, cornerRadius, cornerRadius, strokePaint)
             }
-            if (fillShape) {
-                canvas.drawColor(currentColor)
-            }
-            canvas.restore()
-            drawRoundRect(outerRect, cornerRadius, cornerRadius, strokePaint)
         }
     }
 
     private fun applyFillTransition(canvas: Canvas) {
-        when (morphPercent) {
+        if (currentRadius == 0f) {
+            return
+        }
+        when (transitionPercent) {
             0f -> return
             1f -> canvas.drawColor(currentColor)
-            else -> canvas.drawPath(innerPath, fillPaint)
+            else -> canvas.drawCircle(hotSpot.x, hotSpot.y, currentRadius, fillPaint)
         }
     }
 
     private fun updateTransitionPath() {
         if (fillRadius == 0f) {
+            currentRadius = 0f
             return
         }
-        val radius = mapFromRangeToRange(
-            value = morphPercent,
+        currentRadius = mapFromRangeToRange(
+            value = transitionPercent,
             sourceRangeStart = 0f,
             sourceRangeEnd = 1f,
             targetRangeStart = 0f,
             targetRangeEnd = fillRadius
         )
         innerPath.reset()
-        innerPath.addCircle(hotSpot.x, hotSpot.y, radius, Path.Direction.CW)
+        innerPath.addCircle(hotSpot.x, hotSpot.y, currentRadius, Path.Direction.CW)
     }
 
     private fun applyClipTransition(canvas: Canvas) {
-        if (morphPercent > 0f) {
+        if (transitionPercent > 0f && currentRadius > 0f) {
             canvas.clipOutPathCompat(innerPath)
         }
     }
@@ -146,25 +156,28 @@ class MorphingShapeDrawable(
     }
 
     private fun updateOuterPath(newBounds: Rect): Boolean {
-        val inset = strokePaint.strokeWidth / 2
-        boundsRect.set(newBounds)
-        if (!outerRect.equalsWithInset(boundsRect, inset)) {
-            outerRect.set(newBounds)
-            outerRect.inset(inset, inset)
+        val stroke = strokePaint.strokeWidth
+        val halfStroke = stroke / 2
+        val newBoundsF = RectF(newBounds)
+        if (boundsRect != newBoundsF) {
+            boundsRect.set(newBoundsF)
+            strokeRect.set(newBoundsF)
+            strokeRect.inset(halfStroke, halfStroke)
             outerPath.reset()
-            outerPath.addRoundRect(outerRect, outerCornerRadii, Path.Direction.CW)
+            outerPath.addRoundRect(boundsRect, outerCornerRadii, Path.Direction.CW)
             return true
         }
         return false
     }
 
     private fun updateInnerPath(): Boolean {
-        var isChanged = hotSpot.normalize(outerRect)
+        var isChanged = hotSpot.fitIn(boundsRect)
 
-        val topLeftCorner = lineLength(hotSpot.x, hotSpot.y, outerRect.left, outerRect.top)
-        val topRightCorner = lineLength(hotSpot.x, hotSpot.y, outerRect.right, outerRect.top)
-        val bottomLeftCorner = lineLength(hotSpot.x, hotSpot.y, outerRect.left, outerRect.bottom)
-        val bottomRightCorner = lineLength(hotSpot.x, hotSpot.y, outerRect.right, outerRect.bottom)
+        val topLeftCorner = lineLength(hotSpot.x, hotSpot.y, boundsRect.left, boundsRect.top)
+        val topRightCorner = lineLength(hotSpot.x, hotSpot.y, boundsRect.right, boundsRect.top)
+        val bottomLeftCorner = lineLength(hotSpot.x, hotSpot.y, boundsRect.left, boundsRect.bottom)
+        val bottomRightCorner =
+            lineLength(hotSpot.x, hotSpot.y, boundsRect.right, boundsRect.bottom)
         val newRadius = maxOf(topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner)
         if (newRadius != fillRadius) {
             fillRadius = newRadius
