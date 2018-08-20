@@ -13,3 +13,7 @@ fun PointF.fitIn(rect: RectF): Boolean {
     }
     return false
 }
+
+operator fun PointF.component1() = x
+
+operator fun PointF.component2() = y

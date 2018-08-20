@@ -62,9 +62,17 @@ class MorphingShapeDrawable(
         }
     }
 
-    fun setHotSpotPosition(x: Float, y: Float) {
-        hotSpot.set(x, y)
-        if (updateInnerPath()) {
+    override fun setHotspot(x: Float, y: Float) {
+        val (oldX, oldY) = hotSpot
+        val isChanged = if (oldX != x || oldY != y) {
+            hotSpot.set(x, y)
+            hotSpot.fitIn(boundsRect)
+            hotSpot.x != oldX || hotSpot.y != oldY
+        } else {
+            false
+        }
+        if (isChanged) {
+            updateInnerPath()
             updateTransitionPath()
             invalidateSelf()
         }

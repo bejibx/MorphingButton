@@ -220,7 +220,7 @@ class MorphingButton(
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event != null) {
             if (event.actionMasked == MotionEvent.ACTION_UP) {
-                morphingDrawable.setHotSpotPosition(event.x, event.y)
+                morphingDrawable.setHotspot(event.x, event.y)
             }
         }
         return super.onTouchEvent(event)
