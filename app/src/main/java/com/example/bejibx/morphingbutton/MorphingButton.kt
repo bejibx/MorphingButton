@@ -128,7 +128,7 @@ class MorphingButton(
         text = style.text
         setTextColor(style.textColor)
         morphingDrawable.transitionMode = style.backgroundTransitionMode
-        morphingDrawable.transitionPercent = 0f
+        morphingDrawable.level = Drawables.MIN_LEVEL
         morphingDrawable.fillShape = style.isBackgroundFilled
     }
 
@@ -150,10 +150,10 @@ class MorphingButton(
         val animation = buildAnimation {
             interpolator = FastOutSlowInInterpolator()
 
-            ofFloat(0f, 1f) {
+            ofInt(Drawables.MIN_LEVEL, Drawables.MAX_LEVEL) {
                 duration = 500
                 addUpdateListener {
-                    morphingDrawable.transitionPercent = it.animatedValue as Float
+                    morphingDrawable.level = it.animatedValue as Int
                 }
             }
 
@@ -193,7 +193,7 @@ class MorphingButton(
                     morphingDrawable.apply {
                         fillShape = style.isBackgroundFilled
                         transitionMode = style.backgroundTransitionMode
-                        transitionPercent = 0f
+                        level = Drawables.MIN_LEVEL
                     }
                 }
             )

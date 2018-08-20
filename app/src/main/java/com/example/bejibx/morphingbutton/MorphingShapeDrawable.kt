@@ -46,15 +46,6 @@ class MorphingShapeDrawable(
             invalidateSelf()
         }
 
-    var transitionPercent = initialMorphPercent
-        set(value) {
-            if (field != value) {
-                field = value
-                updateTransitionPath()
-                invalidateSelf()
-            }
-        }
-
     var fillShape = fillShape
         set(value) {
             if (field != value) {
@@ -86,7 +77,7 @@ class MorphingShapeDrawable(
 
     override fun draw(canvas: Canvas?) {
         canvas?.apply {
-            if (fillShape && transitionPercent == 0f) {
+            if (fillShape && level == 0) {
                 canvas.drawRoundRect(boundsRect, cornerRadius, cornerRadius, fillPaint)
             } else {
                 canvas.save()
@@ -109,31 +100,36 @@ class MorphingShapeDrawable(
         if (currentRadius == 0f) {
             return
         }
-        when (transitionPercent) {
-            0f -> return
-            1f -> canvas.drawColor(currentColor)
+        when (level) {
+            0 -> return
+            1 -> canvas.drawColor(currentColor)
             else -> canvas.drawCircle(hotSpot.x, hotSpot.y, currentRadius, fillPaint)
         }
     }
 
-    private fun updateTransitionPath() {
+    private fun updateTransitionPath(): Boolean {
         if (fillRadius == 0f) {
             currentRadius = 0f
-            return
+            return false
         }
-        currentRadius = mapFromRangeToRange(
-            value = transitionPercent,
-            sourceRangeStart = 0f,
-            sourceRangeEnd = 1f,
+        val radius = mapFromRangeToRange(
+            value = level.toFloat(),
+            sourceRangeStart = Drawables.MIN_LEVEL.toFloat(),
+            sourceRangeEnd = Drawables.MAX_LEVEL.toFloat(),
             targetRangeStart = 0f,
             targetRangeEnd = fillRadius
         )
-        innerPath.reset()
-        innerPath.addCircle(hotSpot.x, hotSpot.y, currentRadius, Path.Direction.CW)
+        if (currentRadius != radius) {
+            currentRadius = radius
+            innerPath.reset()
+            innerPath.addCircle(hotSpot.x, hotSpot.y, currentRadius, Path.Direction.CW)
+            return true
+        }
+        return false
     }
 
     private fun applyClipTransition(canvas: Canvas) {
-        if (transitionPercent > 0f && currentRadius > 0f) {
+        if (level > 0f && currentRadius > 0f) {
             canvas.clipOutPathCompat(innerPath)
         }
     }
@@ -173,17 +169,15 @@ class MorphingShapeDrawable(
     private fun updateInnerPath(): Boolean {
         var isChanged = hotSpot.fitIn(boundsRect)
 
-        val topLeftCorner = lineLength(hotSpot.x, hotSpot.y, boundsRect.left, boundsRect.top)
-        val topRightCorner = lineLength(hotSpot.x, hotSpot.y, boundsRect.right, boundsRect.top)
-        val bottomLeftCorner = lineLength(hotSpot.x, hotSpot.y, boundsRect.left, boundsRect.bottom)
-        val bottomRightCorner =
-            lineLength(hotSpot.x, hotSpot.y, boundsRect.right, boundsRect.bottom)
-        val newRadius = maxOf(topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner)
+        val lineToTopLeft = lineLength(hotSpot, boundsRect.topLeftCorner)
+        val lineToTopRight = lineLength(hotSpot, boundsRect.topRightCorner)
+        val lineToBottomLeft = lineLength(hotSpot, boundsRect.bottomLeftCorner)
+        val lineToBottomRight = lineLength(hotSpot, boundsRect.bottomRightCorner)
+        val newRadius = maxOf(lineToTopLeft, lineToTopRight, lineToBottomLeft, lineToBottomRight)
         if (newRadius != fillRadius) {
             fillRadius = newRadius
             isChanged = true
         }
-
         return isChanged
     }
 
@@ -191,7 +185,7 @@ class MorphingShapeDrawable(
         // no-op
     }
 
-    override fun getOpacity() = PixelFormat.OPAQUE
+    override fun getOpacity() = PixelFormat.TRANSLUCENT
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
         // no-op
@@ -205,6 +199,11 @@ class MorphingShapeDrawable(
         strokePaint.color = currentColor
         fillPaint.color = currentColor
         return currentColor != oldColor
+    }
+
+    override fun onLevelChange(level: Int): Boolean {
+        checkLevel(level)
+        return updateTransitionPath()
     }
 
     enum class TransitionMode { FILL, CLIP }
