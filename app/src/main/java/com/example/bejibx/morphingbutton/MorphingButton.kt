@@ -1,7 +1,6 @@
 package com.example.bejibx.morphingbutton
 
 import android.animation.Animator
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -12,7 +11,6 @@ import android.support.v7.widget.AppCompatButton
 import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.util.AttributeSet
-import android.view.MotionEvent
 
 class MorphingButton(
     context: Context,
@@ -214,16 +212,6 @@ class MorphingButton(
             return true
         }
         return false
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
-        if (event != null) {
-            if (event.actionMasked == MotionEvent.ACTION_UP) {
-                morphingDrawable.setHotspot(event.x, event.y)
-            }
-        }
-        return super.onTouchEvent(event)
     }
 
     private enum class StyleType {
