@@ -64,16 +64,16 @@ class MorphingShapeDrawable(
 
     override fun setHotspot(x: Float, y: Float) {
         val (oldX, oldY) = hotSpot
-        val isChanged = if (oldX != x || oldY != y) {
+        val isHotSpotChanged = if (oldX != x || oldY != y) {
             hotSpot.set(x, y)
             hotSpot.fitIn(boundsRect)
             hotSpot.x != oldX || hotSpot.y != oldY
         } else {
             false
         }
-        if (isChanged) {
-            updateInnerPath()
-            updateTransitionPath()
+        if (isHotSpotChanged) {
+            invalidateMaxTransitionRadius()
+            invalidateTransition()
             invalidateSelf()
         }
     }
@@ -110,7 +110,7 @@ class MorphingShapeDrawable(
         }
     }
 
-    private fun updateTransitionPath(): Boolean {
+    private fun invalidateTransition(): Boolean {
         if (fillRadius == 0f) {
             currentRadius = 0f
             return false
@@ -122,13 +122,14 @@ class MorphingShapeDrawable(
             targetRangeStart = 0f,
             targetRangeEnd = fillRadius
         )
-        if (currentRadius != radius) {
+        return if (currentRadius != radius) {
             currentRadius = radius
             innerPath.reset()
             innerPath.addCircle(hotSpot.x, hotSpot.y, currentRadius, Path.Direction.CW)
-            return true
+            true
+        } else {
+            false
         }
-        return false
     }
 
     private fun applyClipTransition(canvas: Canvas) {
@@ -142,25 +143,19 @@ class MorphingShapeDrawable(
         if (bounds == null) {
             return
         }
-        var isChanged = updateOuterPath(bounds)
-        isChanged = if (updateInnerPath()) {
-            updateTransitionPath()
-            true
-        } else {
-            isChanged
-        }
-        if (isChanged) {
-            invalidateSelf()
+        if (invalidateBounds(bounds)) {
+            hotSpot.fitIn(boundsRect)
+            invalidateMaxTransitionRadius()
+            invalidateTransition()
         }
     }
 
-    private fun updateOuterPath(newBounds: Rect): Boolean {
-        val stroke = strokePaint.strokeWidth
-        val halfStroke = stroke / 2
+    private fun invalidateBounds(newBounds: Rect): Boolean {
         val newBoundsF = RectF(newBounds)
         if (boundsRect != newBoundsF) {
             boundsRect.set(newBoundsF)
             strokeRect.set(newBoundsF)
+            val halfStroke = strokePaint.strokeWidth / 2
             strokeRect.inset(halfStroke, halfStroke)
             outerPath.reset()
             outerPath.addRoundRect(boundsRect, outerCornerRadii, Path.Direction.CW)
@@ -169,19 +164,13 @@ class MorphingShapeDrawable(
         return false
     }
 
-    private fun updateInnerPath(): Boolean {
-        var isChanged = hotSpot.fitIn(boundsRect)
-
+    private fun invalidateMaxTransitionRadius() {
         val lineToTopLeft = lineLength(hotSpot, boundsRect.topLeftCorner)
         val lineToTopRight = lineLength(hotSpot, boundsRect.topRightCorner)
         val lineToBottomLeft = lineLength(hotSpot, boundsRect.bottomLeftCorner)
         val lineToBottomRight = lineLength(hotSpot, boundsRect.bottomRightCorner)
         val newRadius = maxOf(lineToTopLeft, lineToTopRight, lineToBottomLeft, lineToBottomRight)
-        if (newRadius != fillRadius) {
-            fillRadius = newRadius
-            isChanged = true
-        }
-        return isChanged
+        fillRadius = newRadius
     }
 
     override fun setAlpha(alpha: Int) {
@@ -206,7 +195,7 @@ class MorphingShapeDrawable(
 
     override fun onLevelChange(level: Int): Boolean {
         checkLevel(level)
-        return updateTransitionPath()
+        return invalidateTransition()
     }
 
     enum class TransitionMode { FILL, CLIP }
