@@ -45,7 +45,6 @@ class MorphingButton(
             colors = attributes.backgroundColor,
             strokeWidth = Dimension(attributes.strokeWidthPx, DimensionUnit.PX),
             cornerRadius = Dimension(attributes.cornerRadiusPx, DimensionUnit.PX),
-            initialMorphPercent = 0f,
             transitionMode = MorphingShapeDrawable.TransitionMode.CLIP,
             fillShape = true
         )

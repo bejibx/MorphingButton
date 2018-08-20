@@ -8,7 +8,6 @@ class MorphingShapeDrawable(
     private val colors: ColorStateList = ColorStateList.valueOf(Color.RED),
     cornerRadius: Dimension = Dimension(2f),
     strokeWidth: Dimension = Dimension(2f),
-    initialMorphPercent: Float = 1f,
     transitionMode: TransitionMode = TransitionMode.CLIP,
     fillShape: Boolean = true
 ) : Drawable() {
@@ -19,10 +18,6 @@ class MorphingShapeDrawable(
         }
         require(strokeWidth.value > 0) {
             "Stroke width should be greater than zero but actual value is $strokeWidth!"
-        }
-        require(initialMorphPercent in (0f..1f)) {
-            "Morph percent value should be in range [0..1] but actual value is " +
-                    "$initialMorphPercent!"
         }
     }
 
